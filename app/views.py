@@ -19,8 +19,9 @@ class GameSchema(Schema):
 	status = fields.Str()
 	deck = fields.Nested('CardSchema', many=True, exclude=('game',))
 	board = fields.Nested('BoardSpaceSchema',many=True, exclude=('game,'))
-	player1= fields.Nested(PlayerSchema, only=["id", "username"])
-	player2= fields.Nested(PlayerSchema, only=["id", "username"])
+	hosting = fields.Nested(PlayerSchema, only=["id", "username"])
+	joining = fields.Nested(PlayerSchema, only=["id", "username"])
+	turn = fields.Nested(PlayerSchema, only=["id", "username"])
 
 	@post_load
 	def make_game(self, data):
@@ -140,7 +141,7 @@ def create_game():
 	create_deck(data)
 	create_board(data)
 	db.session.commit()
-	result = game_schema.dump(data)
+	result = game_schema.game_info(data)
 	return jsonify({'result':result.data})
 
 @app.route("/game/<int:game_id>", methods=['GET'])
@@ -150,6 +151,7 @@ def get_game(game_id):
 	Get information on game
 	'''
 	game = Game.query.filter_by(id=game_id).first()
+	print game.deck
 	result = game_schema.game_info(game)
 	return jsonify(result.data)
 
@@ -160,7 +162,14 @@ def join_game(game_id):
 	Join the game_id
 	'''
 	game = Game.query.filter_by(id=game_id).first()
-	game.joining = Player.query.filter_by(username=request.authorization.username).first()
+	if game.joining:
+		return "Already Full"
+	player = Player.query.filter_by(username=request.authorization.username).first()
+	if game.hosting  == player:
+		return "Cannot Join your own game"
+	game.joining = player
+	game.status = "In Progress"
+	game.turn = game.hosting
 	db.session.commit()
 	return 'Join %d' % game_id
 
