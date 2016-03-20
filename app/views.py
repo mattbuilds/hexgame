@@ -2,7 +2,7 @@ import random
 from . import app, db
 from flask import Response, jsonify, request
 from .models import Game, Card, BoardSpace, Player
-from auth import requires_auth
+from auth import requires_auth, requires_game_auth
 from marshmallow import Schema, fields, post_load
 
 class PlayerSchema(Schema):
@@ -39,7 +39,6 @@ class GameSchema(Schema):
 class CardSchema(Schema):
 	value = fields.Str()
 	position = fields.Int()
-	game = fields.Nested(GameSchema, only=["id"])
 
 	@post_load
 	def make_card(self, data):
@@ -48,8 +47,7 @@ class CardSchema(Schema):
 class BoardSpaceSchema(Schema):
 	x_loc = fields.Int()
 	y_loc = fields.Int()
-	card = fields.Nested(CardSchema, only=["value"])
-	game = fields.Nested(GameSchema, only=["id"])
+	card = fields.Nested(CardSchema)
 
 	@post_load
 	def make_boardspace(self, data):
@@ -89,6 +87,13 @@ def create_board(game):
 			if abs(y-x) < 6:
 				space = BoardSpace(x_loc = x, y_loc = y, game=game)
 				db.session.add(space)
+
+def initial_deal(game):
+	for x in range(0,6):
+		if x % 2 == 0:
+			game.deck[x].player = game.hosting
+		else:
+			game.deck[x].player = game.joining
 
 @app.route("/", methods=['GET'])
 def hello():
@@ -151,7 +156,7 @@ def get_game(game_id):
 	Get information on game
 	'''
 	game = Game.query.filter_by(id=game_id).first()
-	print game.deck
+	print game.board[0].card
 	result = game_schema.game_info(game)
 	return jsonify(result.data)
 
@@ -170,15 +175,20 @@ def join_game(game_id):
 	game.joining = player
 	game.status = "In Progress"
 	game.turn = game.hosting
+	initial_deal(game)
 	db.session.commit()
 	return 'Join %d' % game_id
 
 @app.route("/game/<int:game_id>/deal", methods=['GET'])
 def deal_hand(game_id):
+	game = Game.query.filter_by(id=game_id).first()
+	initial_deal(game)
 	return 'Get %d' % game_id
 
-@app.route("/game/<int:game_id>/draw/<int:meeple_id>", methods=['POST'])
-def draw_card(game_id, meeple_id):
+@app.route("/game/<int:game_id>/draw/", methods=['GET'])
+@requires_auth
+@requires_game_auth
+def draw_card(game_id):
 	return 'Post %d' % game_id
 
 @app.route("/game/<int:game_id>/move/<int:meeple_id>", methods=['POST'])

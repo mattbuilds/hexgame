@@ -11,7 +11,7 @@ class Player(db.Model):
 	hosting = db.relationship("Game", backref='hosting', lazy='dynamic', foreign_keys='Game.hosting_id')
 	joining = db.relationship("Game", backref='joining', lazy='dynamic', foreign_keys='Game.joining_id')
 	turn = db.relationship("Game", backref='turn', lazy='dynamic', foreign_keys='Game.turn_id')
-	card = db.relationship("Card", backref='card', lazy='dynamic')
+	card = db.relationship("Card", backref='player', lazy='dynamic')
 
 	def new_player(self):
 		try:
@@ -43,7 +43,7 @@ class Card(db.Model):
 	position = db.Column(db.Integer)
 	player_id = db.Column(db.Integer, db.ForeignKey('player.id'))
 	game_id = db.Column(db.Integer, db.ForeignKey('game.id'))
-	board_space = db.relationship("BoardSpace", backref="board_space", lazy="dynamic")
+	board_space = db.relationship("BoardSpace", backref="card", lazy="dynamic")
 
 class BoardSpace(db.Model):
 	__tablename__ = 'board_space'
