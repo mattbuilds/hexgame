@@ -29,8 +29,21 @@ def requires_game_auth(f):
 		auth = request.authorization
 		player = Player.query.filter_by(username = auth.username).first()
 		game_id = kwargs['game_id']
-		game = Game.query.filter_by(id=game_id)\
-			   .filter((Game.hosting == player)|(Game.joining == player)).first()
+		game = Game.query.filter_by(id=game_id).\
+					filter((Game.hosting == player)|(Game.joining == player)).\
+					first()
+		if not game:
+			return authenticate()
+		return f(*args, **kwargs)
+	return decorated
+
+def requires_turn_auth(f):
+	@wraps(f)
+	def decorated(*args, **kwargs):
+		auth = request.authorization
+		player = Player.query.filter_by(username = auth.username).first()
+		game_id = kwargs['game_id']
+		game = Game.query.filter_by(id=game_id).filter(Game.turn == player).first()
 		if not game:
 			return authenticate()
 		return f(*args, **kwargs)

@@ -35,6 +35,15 @@ class Game(db.Model):
 	turn_id = db.Column(db.Integer, db.ForeignKey('player.id'))
 	deck = db.relationship("Card", backref='game', lazy='dynamic')
 	board = db.relationship("BoardSpace", backref='game', lazy='dynamic')
+	bot_deck = db.relationship("BotCard", backref='game', lazy='dynamic')
+
+	def change(self, game_id, player):
+		result = self.query.filter_by(id=game_id).first()
+		if result.hosting == player:
+			result.turn = result.joining
+		else:
+			result.turn = result.hosting
+		db.session.commit()
 
 class Card(db.Model):
 	__tablename__ = 'card'
@@ -45,6 +54,18 @@ class Card(db.Model):
 	game_id = db.Column(db.Integer, db.ForeignKey('game.id'))
 	board_space = db.relationship("BoardSpace", backref="card", lazy="dynamic")
 
+class Bot(db.Model):
+	__tablename__ = 'bot'
+	id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+	game_id = db.Column(db.Integer, db.ForeignKey('game.id'))
+	board_space = db.relationship("BoardSpace", backref='game', lazy='dynamic')
+
+class BotCard(db.Model):
+	__tablename__ = 'bot_card'
+	id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+	value = db.Column(db.String(200))
+	game_id = db.Column(db.Integer, db.ForeignKey('game.id'))
+
 class BoardSpace(db.Model):
 	__tablename__ = 'board_space'
 	id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -52,6 +73,7 @@ class BoardSpace(db.Model):
 	y_loc = db.Column(db.Integer)
 	game_id = db.Column(db.Integer, db.ForeignKey('game.id'))
 	card_id = db.Column(db.Integer, db.ForeignKey('card.id'))
+	bot_id = db.Column(db.Integer, db.ForeignKey('bot.id'))
 
 class Meeple(db.Model):
 	__tablename__ = 'meeple'

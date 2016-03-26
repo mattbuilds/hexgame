@@ -2,7 +2,7 @@ import random
 from . import app, db
 from flask import Response, jsonify, request
 from .models import Game, Card, BoardSpace, Player
-from auth import requires_auth, requires_game_auth
+from auth import requires_auth, requires_game_auth, requires_turn_auth
 from marshmallow import Schema, fields, post_load
 
 class PlayerSchema(Schema):
@@ -89,25 +89,26 @@ def create_board(game):
 				db.session.add(space)
 
 def initial_deal(game):
+	deck = game.deck.order_by(Card.position)
 	for x in range(0,6):
 		if x % 2 == 0:
-			game.deck[x].player = game.hosting
+			deck[x].player = game.hosting
 		else:
-			game.deck[x].player = game.joining
+			deck[x].player = game.joining
 
 @app.route("/", methods=['GET'])
 def hello():
 	db.create_all()
 	return "Created"
 
-@app.route("/player", methods=['GET'])
+@app.route("/player/", methods=['GET'])
 @requires_auth
 def get_player():
 	player = Player.query.filter_by(username=request.authorization.username).first()
 	result = player_schema.dump(player)
 	return jsonify(result.data)
 
-@app.route("/player", methods=['POST'])
+@app.route("/player/", methods=['POST'])
 def create_player():
 	json = request.get_json()
 	data,errors = player_schema.load(json)
@@ -185,11 +186,18 @@ def deal_hand(game_id):
 	initial_deal(game)
 	return 'Get %d' % game_id
 
-@app.route("/game/<int:game_id>/draw/", methods=['GET'])
+@app.route("/game/<int:game_id>/draw", methods=['GET'])
 @requires_auth
-@requires_game_auth
+@requires_turn_auth
 def draw_card(game_id):
-	return 'Post %d' % game_id
+	card = Card.query.filter_by(game_id=game_id).\
+				filter_by(player_id=None).\
+				order_by(Card.position).first()
+	player = Player.query.filter_by(username=request.authorization.username).first()
+	card.player = player
+	db.session.commit()
+	result = card_schema.dump(card)
+	return jsonify(result.data)
 
 @app.route("/game/<int:game_id>/move/<int:meeple_id>", methods=['POST'])
 def move_meeple(game_id, meeple_id):
@@ -198,7 +206,3 @@ def move_meeple(game_id, meeple_id):
 @app.route("/game/<int:game_id>/play/<int:meeple_id>", methods=['POST'])
 def play_card(game_id, meeple_id):
 	return 'Post %d %d' % (game_id, meeple_id)
-
-@app.route("/game/<int:game_id>/submit", methods=['POST'])
-def submit_turn(game_id):
-	return 'Post %d' % game_id
