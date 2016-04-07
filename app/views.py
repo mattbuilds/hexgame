@@ -1,8 +1,8 @@
 import random
 from . import app, db
 from flask import Response, jsonify, request
-from .models import Game, Card, BoardSpace, Player
-from auth import requires_auth, requires_game_auth, requires_turn_auth
+from .models import Game, Card, BoardSpace, Player, Meeple
+from auth import requires_auth, requires_game_auth, requires_turn_auth, meeple_check, card_check
 from marshmallow import Schema, fields, post_load
 
 class PlayerSchema(Schema):
@@ -36,22 +36,29 @@ class GameSchema(Schema):
 				del x['deck']
 		return result
 
+class BoardSpaceSchema(Schema):
+	x_loc = fields.Int()
+	y_loc = fields.Int()
+	card = fields.Nested('CardSchema', many=False)
+	meeple = fields.Nested('MeepleSchema', many=False, exclude=('board_space',))
+
+	@post_load
+	def make_boardspace(self, data):
+		return BoardSpace(**data)
+
 class CardSchema(Schema):
 	value = fields.Str()
 	position = fields.Int()
+	board_space = fields.Nested(BoardSpaceSchema, only=["x_loc", "y_loc"])
 
 	@post_load
 	def make_card(self, data):
 		return Card(**data)
 
-class BoardSpaceSchema(Schema):
-	x_loc = fields.Int()
-	y_loc = fields.Int()
-	card = fields.Nested(CardSchema)
-
-	@post_load
-	def make_boardspace(self, data):
-		return BoardSpace(**data)
+class MeepleSchema(Schema):
+	id = fields.Int()
+	player = fields.Nested(PlayerSchema, only=["id", "username"])
+	board_space = fields.Nested(BoardSpaceSchema, only=["x_loc", "y_loc"])
 
 game_schema = GameSchema()
 games_schema = GameSchema(many=True)
@@ -59,6 +66,7 @@ player_schema = PlayerSchema()
 card_schema = CardSchema()
 boardspace_schema = BoardSpaceSchema()
 boardspaces_schema = BoardSpaceSchema(many=True)
+meeple_schema = MeepleSchema()
 
 def create_deck(game):
 	card_types = ['UL','U', 'UR', 'DR', 'D', 'DL']
@@ -87,6 +95,15 @@ def create_board(game):
 			if abs(y-x) < 6:
 				space = BoardSpace(x_loc = x, y_loc = y, game=game)
 				db.session.add(space)
+				if ((x==0 and y==0) or (x==1 and y==1)):
+					Meeple.add_meeple(game, game.hosting, space)
+
+def add_join_to_board(game):
+	space1 = BoardSpace.get(2,2,game)
+	space2 = BoardSpace.get(2,3,game)
+	Meeple.add_meeple(game, game.joining, space1)
+	Meeple.add_meeple(game, game.joining, space2)
+
 
 def initial_deal(game):
 	deck = game.deck.order_by(Card.position)
@@ -100,6 +117,11 @@ def initial_deal(game):
 def hello():
 	db.create_all()
 	return "Created"
+
+@app.route("/drop", methods=['GET'])
+def drop():
+	db.drop_all()
+	return "Dropped	"
 
 @app.route("/player/", methods=['GET'])
 @requires_auth
@@ -150,6 +172,14 @@ def create_game():
 	result = game_schema.game_info(data)
 	return jsonify({'result':result.data})
 
+@app.route("/boardspace", methods=['GET'])
+def get_space():
+	data = BoardSpace.query.filter_by(game_id=1).filter_by(x_loc=0).filter_by(y_loc=0).first()
+	result = boardspace_schema.dump(data)
+	print data.meeple
+	print data.game.deck
+	return jsonify({'result':result.data})
+
 @app.route("/game/<int:game_id>", methods=['GET'])
 @requires_auth
 def get_game(game_id):
@@ -157,7 +187,6 @@ def get_game(game_id):
 	Get information on game
 	'''
 	game = Game.query.filter_by(id=game_id).first()
-	print game.board[0].card
 	result = game_schema.game_info(game)
 	return jsonify(result.data)
 
@@ -176,6 +205,7 @@ def join_game(game_id):
 	game.joining = player
 	game.status = "In Progress"
 	game.turn = game.hosting
+	add_join_to_board(game)
 	initial_deal(game)
 	db.session.commit()
 	return 'Join %d' % game_id
@@ -190,19 +220,63 @@ def deal_hand(game_id):
 @requires_auth
 @requires_turn_auth
 def draw_card(game_id):
-	card = Card.query.filter_by(game_id=game_id).\
-				filter_by(player_id=None).\
-				order_by(Card.position).first()
+	card = Card.query.filter_by(game_id=game_id).filter_by(player_id=None).\
+					  filter_by(board_space_id=None).order_by(Card.position).first()
 	player = Player.query.filter_by(username=request.authorization.username).first()
 	card.player = player
+	Game.change(game_id)
 	db.session.commit()
 	result = card_schema.dump(card)
 	return jsonify(result.data)
 
 @app.route("/game/<int:game_id>/move/<int:meeple_id>", methods=['POST'])
+@requires_auth
+@requires_turn_auth 
+@meeple_check
 def move_meeple(game_id, meeple_id):
-	return 'Post %d %d' % (game_id, meeple_id)
+	json = request.get_json()
+	data, errors = boardspace_schema.load(json)
+	board_space = BoardSpace.query.filter_by(game_id=game_id).filter_by(x_loc=data.x_loc).\
+								   filter_by(y_loc=data.y_loc).first()
+	meeple = Meeple.query.filter_by(game_id=game_id).filter_by(id=meeple_id).first()
+	
+	#Check to make sure space exists
+	if not board_space:
+		return jsonify({'error':'This is not a space.'})
+	
+	#Check that movement is allowed
 
-@app.route("/game/<int:game_id>/play/<int:meeple_id>", methods=['POST'])
-def play_card(game_id, meeple_id):
-	return 'Post %d %d' % (game_id, meeple_id)
+	#Check that space is empty
+	if board_space.meeple or board_space.card:
+		return jsonify({'error':'This space is already occupied son.'})
+	
+	#Place meeple at new space
+	board_space.meeple = meeple
+
+	db.session.commit()
+	result = meeple_schema.dump(meeple)
+	return jsonify(result.data)
+
+@app.route("/game/<int:game_id>/play/<int:meeple_id>/<int:card_id>", methods=['POST'])
+@requires_auth
+@requires_turn_auth 
+@meeple_check
+@card_check
+def play_card(game_id, meeple_id, card_id):
+	json = request.get_json()
+	data, errors = boardspace_schema.load(json)
+	board_space = BoardSpace.query.filter_by(game_id=game_id).filter_by(x_loc=data.x_loc).\
+								   filter_by(y_loc=data.y_loc).first()
+	meeple = Meeple.query.filter_by(game_id=game_id).filter_by(id=meeple_id).first()
+	card = Card.query.filter_by(game_id=game_id).filter_by(id=card_id).first()
+
+	if not board_space:
+		return jsonify({'error':'This is not a space.'})
+	if board_space.meeple or board_space.card:
+		return jsonify({'error':'This space is already occupied son.'})
+
+	card.player = None
+	board_space.card = card
+	db.session.commit()
+	result = card_schema.dump(card)
+	return jsonify(result.data)

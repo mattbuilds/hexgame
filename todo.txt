@@ -1,0 +1,4 @@
+TODO
+
+- write a function to do all the checks for meeples and cards
+- write boardspace to meeple function to make sure move is allowed
