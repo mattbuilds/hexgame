@@ -2,71 +2,18 @@ import random
 from . import app, db
 from flask import Response, jsonify, request
 from .models import Game, Card, BoardSpace, Player, Meeple
+from .schema import GameSchema, PlayerSchema, CardSchema, BoardSpaceSchema, MeepleSchema
 from auth import requires_auth, requires_game_auth, requires_turn_auth, meeple_check, card_check
-from marshmallow import Schema, fields, post_load
-
-class PlayerSchema(Schema):
-	id = fields.Int()
-	username = fields.Str()
-	password = fields.Str(load_only=True)
-
-	@post_load
-	def make_player(self, data):
-		return Player(**data)
-
-class GameSchema(Schema):
-	id = fields.Int(dump_only=True)
-	status = fields.Str()
-	deck = fields.Nested('CardSchema', many=True, exclude=('game',))
-	board = fields.Nested('BoardSpaceSchema',many=True, exclude=('game,'))
-	hosting = fields.Nested(PlayerSchema, only=["id", "username"])
-	joining = fields.Nested(PlayerSchema, only=["id", "username"])
-	turn = fields.Nested(PlayerSchema, only=["id", "username"])
-
-	@post_load
-	def make_game(self, data):
-		return Game(**data)
-
-	def game_info(self, data):
-		result = self.dump(data)
-		try:
-			del result.data['deck']
-		except:
-			for x in result.data:
-				del x['deck']
-		return result
-
-class BoardSpaceSchema(Schema):
-	x_loc = fields.Int()
-	y_loc = fields.Int()
-	card = fields.Nested('CardSchema', many=False)
-	meeple = fields.Nested('MeepleSchema', many=False, exclude=('board_space',))
-
-	@post_load
-	def make_boardspace(self, data):
-		return BoardSpace(**data)
-
-class CardSchema(Schema):
-	value = fields.Str()
-	position = fields.Int()
-	board_space = fields.Nested(BoardSpaceSchema, only=["x_loc", "y_loc"])
-
-	@post_load
-	def make_card(self, data):
-		return Card(**data)
-
-class MeepleSchema(Schema):
-	id = fields.Int()
-	player = fields.Nested(PlayerSchema, only=["id", "username"])
-	board_space = fields.Nested(BoardSpaceSchema, only=["x_loc", "y_loc"])
 
 game_schema = GameSchema()
 games_schema = GameSchema(many=True)
 player_schema = PlayerSchema()
 card_schema = CardSchema()
+cards_schema = CardSchema(many=True)
 boardspace_schema = BoardSpaceSchema()
 boardspaces_schema = BoardSpaceSchema(many=True)
 meeple_schema = MeepleSchema()
+meeples_schema = MeepleSchema(many=True)
 
 def create_deck(game):
 	card_types = ['UL','U', 'UR', 'DR', 'D', 'DL']
@@ -123,6 +70,10 @@ def drop():
 	db.drop_all()
 	return "Dropped	"
 
+@app.route("/test", methods=['GET'])
+def test():
+	return "Test"
+
 @app.route("/player/", methods=['GET'])
 @requires_auth
 def get_player():
@@ -150,8 +101,8 @@ def get_games():
 	'''
 	Returns a list of all games
 	'''
-	games = Game.query.all()
-	result = games_schema.game_info(games)
+	games = Game.query.with_entities(Game.id, Game.status).all()
+	result = games_schema.dump(games)
 	return jsonify({"games":result.data})
 
 @app.route("/game", methods=['POST'])
@@ -170,14 +121,6 @@ def create_game():
 	create_board(data)
 	db.session.commit()
 	result = game_schema.game_info(data)
-	return jsonify({'result':result.data})
-
-@app.route("/boardspace", methods=['GET'])
-def get_space():
-	data = BoardSpace.query.filter_by(game_id=1).filter_by(x_loc=0).filter_by(y_loc=0).first()
-	result = boardspace_schema.dump(data)
-	print data.meeple
-	print data.game.deck
 	return jsonify({'result':result.data})
 
 @app.route("/game/<int:game_id>", methods=['GET'])
@@ -210,11 +153,23 @@ def join_game(game_id):
 	db.session.commit()
 	return 'Join %d' % game_id
 
-@app.route("/game/<int:game_id>/deal", methods=['GET'])
-def deal_hand(game_id):
-	game = Game.query.filter_by(id=game_id).first()
-	initial_deal(game)
-	return 'Get %d' % game_id
+@app.route("/game/<int:game_id>/hand", methods=["GET"])
+@requires_auth
+@requires_game_auth
+def get_hand(game_id):
+	player = Player.query.filter_by(username=request.authorization.username).first()
+	hand = Card.query.filter_by(game_id=game_id).filter_by(player=player).all()
+	result = cards_schema.dump(hand)
+	return jsonify({'hand':result.data})
+
+@app.route("/game/<int:game_id>/meeples", methods=["GET"])
+@requires_auth
+@requires_game_auth
+def get_meeples(game_id):
+	player = Player.query.filter_by(username=request.authorization.username).first()
+	meeples = Meeple.query.filter_by(game_id=game_id).filter_by(player=player).all()
+	result = meeples_schema.dump(meeples)
+	return jsonify({'meeples':result.data})
 
 @app.route("/game/<int:game_id>/draw", methods=['GET'])
 @requires_auth
@@ -245,6 +200,9 @@ def move_meeple(game_id, meeple_id):
 		return jsonify({'error':'This is not a space.'})
 	
 	#Check that movement is allowed
+	if (abs(meeple.board_space.x_loc - board_space.x_loc) > 1 or 
+		abs(meeple.board_space.y_loc - board_space.y_loc) > 1):
+		return jsonify({'error':'This is an illegal move.'})
 
 	#Check that space is empty
 	if board_space.meeple or board_space.card:
@@ -272,6 +230,12 @@ def play_card(game_id, meeple_id, card_id):
 
 	if not board_space:
 		return jsonify({'error':'This is not a space.'})
+
+	#Check that movement is allowed
+	if (abs(meeple.board_space.x_loc - board_space.x_loc) > 1 or 
+		abs(meeple.board_space.y_loc - board_space.y_loc) > 1):
+		return jsonify({'error':'This is an illegal move.'})
+
 	if board_space.meeple or board_space.card:
 		return jsonify({'error':'This space is already occupied son.'})
 
