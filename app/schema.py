@@ -1,10 +1,28 @@
-from marshmallow import Schema, fields, post_load
+from marshmallow import Schema, fields, post_load, pre_dump
 from .models import Game, Card, BoardSpace, Player, Meeple
+
+def remove_cards(data):
+	#Removes cards that are in the hand or in the deck
+	for card in data.deck[:]:
+		if card.finished:
+			continue
+		if card.board_space is None:
+			data.deck.remove(card)
+
+	#Removes card spaces that aren't on a board space
+	for space in data.card_movement[:]:
+		if space.board_space is None:
+				data.card_movement.remove(space)
+
+	#Creates a new object for cards and meeples on the board
+	data.board_played = {'cards': data.deck, 'meeples':data.meeple, 'card_movement':data.card_movement}
+	return data
 
 class PlayerSchema(Schema):
 	id = fields.Int()
 	username = fields.Str()
 	password = fields.Str(load_only=True)
+	score = fields.Int(dump_only=True)
 
 	@post_load
 	def make_player(self, data):
@@ -13,25 +31,23 @@ class PlayerSchema(Schema):
 class GameSchema(Schema):
 	id = fields.Int(dump_only=True)
 	status = fields.Str()
-	deck = fields.Nested('CardSchema', many=True, exclude=('game',))
-	board = fields.Nested('BoardSpaceSchema',many=True, exclude=('game,'))
-	hosting = fields.Nested(PlayerSchema, only=["id", "username"])
-	joining = fields.Nested(PlayerSchema, only=["id", "username"])
+	hosting = fields.Nested(PlayerSchema, only=["id", "username", "score"])
+	joining = fields.Nested(PlayerSchema, only=["id", "username", "score"])
 	turn = fields.Nested(PlayerSchema, only=["id", "username"])
+	board_played = fields.Nested('BoardPlayed')
 
 	@post_load
 	def make_game(self, data):
 		data['status'] = 'starting'
 		return Game(**data)
 
-	def game_info(self, data):
-		result = self.dump(data)
-		try:
-			del result.data['deck']
-		except:
-			for x in result.data:
-				del x['deck']
-		return result
+	@pre_dump(pass_many=True)
+	def combine_board(self, data, many):
+		if not many:
+			data.hosting.score = data.hosting_score
+			data.joining.score = data.joining_score
+			data = remove_cards(data)
+		return data
 
 class BoardSpaceSchema(Schema):
 	x_loc = fields.Int()
@@ -44,7 +60,12 @@ class BoardSpaceSchema(Schema):
 		return BoardSpace(**data)
 
 class CardSchema(Schema):
+	id = fields.Int()
+	color = fields.Int()
 	value = fields.Str()
+	direction = fields.Str()
+	finished = fields.Bool()
+	board_space = fields.Nested(BoardSpaceSchema, only=["x_loc", "y_loc"])
 
 	@post_load
 	def make_card(self, data):
@@ -54,3 +75,14 @@ class MeepleSchema(Schema):
 	id = fields.Int()
 	player = fields.Nested(PlayerSchema, only=["id", "username"])
 	board_space = fields.Nested(BoardSpaceSchema, only=["x_loc", "y_loc"])
+
+class CardMovementSchema(Schema):
+	id = fields.Int()
+	card = fields.Nested(CardSchema, only=["id", "color", "finished"])
+	board_space = fields.Nested(BoardSpaceSchema, only=["x_loc", "y_loc"])
+
+class BoardPlayed(Schema):
+	meeples = fields.Nested(MeepleSchema, many=True)
+	cards = fields.Nested(CardSchema, many=True)
+	card_movement = fields.Nested(CardMovementSchema, many=True)
+
