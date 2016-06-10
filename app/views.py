@@ -111,7 +111,8 @@ def get_games():
 	'''
 	Returns a list of all games
 	'''
-	games = Game.query.with_entities(Game.id, Game.status).all()
+	games = Game.query.with_entities(Game.id, Game.status).\
+		filter(Game.status != 'In Progress').all()
 	stuff = games_schema.dump(games)
 	return jsonify({"games":stuff.data})
 

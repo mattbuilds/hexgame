@@ -44,8 +44,10 @@ class GameSchema(Schema):
 	@pre_dump(pass_many=True)
 	def combine_board(self, data, many):
 		if not many:
-			data.hosting.score = data.hosting_score
-			data.joining.score = data.joining_score
+			if data.hosting_score:
+				data.hosting.score = data.hosting_score
+			if data.joining_score:
+				data.joining.score = data.joining_score
 			data = remove_cards(data)
 		return data
 
