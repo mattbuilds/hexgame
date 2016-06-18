@@ -17,13 +17,14 @@ class GameService(Service):
 		return jsonify(response.data)
 
 	def create_game(self, request, player):
-		data = self.parse_request(request)
-		data.hosting = player
-		db.session.add(data)
-		self.__create_deck(data)
-		self.__create_board(data)
+		data = {'status' : 'starting'}
+		game = Game(**data)
+		game.hosting = player
+		db.session.add(game)
+		self.__create_deck(game)
+		self.__create_board(game)
 		db.session.commit()
-		result = self.__schema__.dump(data)
+		result = self.__schema__.dump(game)
 		return jsonify({'result': result.data})
 
 	def join_game(self, game, player):

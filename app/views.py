@@ -40,6 +40,11 @@ def create_player():
 	except ParseException as e:
 		return jsonify(e.error), e.code
 
+@app.route("/player/generate", methods=['POST'])
+def generate_player():
+	player = _player.generate()
+	return jsonify(player)
+
 @app.route("/game", methods=['GET'])
 @requires_auth
 def get_games():

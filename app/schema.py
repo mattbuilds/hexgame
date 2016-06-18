@@ -35,6 +35,12 @@ class PlayerSchema(Schema):
 	def make_player(self, data):
 		return Player(**data)
 
+class GeneratePlayerSchema(PlayerSchema):
+	password = fields.Str(
+		required=True,
+		error_messages={'required':'password is required'}
+	)
+
 class GameSchema(Schema):
 	id = fields.Int(dump_only=True)
 	status = fields.Str()
