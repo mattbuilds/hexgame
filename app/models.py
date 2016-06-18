@@ -70,7 +70,7 @@ class BoardSpace(db.Model):
 	game_id = db.Column(db.Integer, db.ForeignKey('game.id'))
 	bot_id = db.Column(db.Integer, db.ForeignKey('bot.id'))
 	meeple = db.relationship("Meeple", uselist=False, backref='board_space')
-	card = db.relationship("Card", backref='board_space')
+	card = db.relationship("Card", uselist=False, backref='board_space')
 	movement = db.relationship("CardMovement", backref="board_space")
 
 	@classmethod
