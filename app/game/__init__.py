@@ -25,7 +25,7 @@ class GameService(Service):
 		self.__create_board(game)
 		db.session.commit()
 		result = self.__schema__.dump(game)
-		return jsonify({'result': result.data})
+		return jsonify(result.data)
 
 	def join_game(self, game, player):
 		if not game:
