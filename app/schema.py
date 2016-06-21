@@ -64,7 +64,7 @@ class GameSchema(Schema):
 			data = remove_cards(data)
 		return data
 
-	@post_dump(pass_many=True)
+	#@post_dump(pass_many=True)
 	def wrap_many(self, data, many):
 		if many:
 			return {'games': data}

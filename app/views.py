@@ -5,18 +5,7 @@ from .models import Game, Card, BoardSpace, Player, Meeple, CardMovement
 from .services import game as _game, player as _player, boardspace as _boardspace, \
 	meeple as _meeple, card as _card
 from .core import ParseException, ResponseError
-from .schema import GameSchema, PlayerSchema, CardSchema, BoardSpaceSchema, MeepleSchema
 from auth import requires_auth, requires_game_auth, requires_turn_auth, meeple_check, card_check
-
-game_schema = GameSchema()
-games_schema = GameSchema(many=True)
-player_schema = PlayerSchema()
-card_schema = CardSchema()
-cards_schema = CardSchema(many=True)
-boardspace_schema = BoardSpaceSchema()
-boardspaces_schema = BoardSpaceSchema(many=True)
-meeple_schema = MeepleSchema()
-meeples_schema = MeepleSchema(many=True)
 
 @app.route("/", methods=['GET'])
 def hello():
