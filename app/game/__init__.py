@@ -1,4 +1,5 @@
 import random
+from turn import Turn
 from .. import db
 from ..core import Service
 from ..models import Game, Card, BoardSpace, Meeple
@@ -10,11 +11,12 @@ class GameService(Service):
 	__model__ = Game
 	__schema__ = GameSchema()
 	__schema_many__ = GameSchema(many=True)
+	turn = Turn()
 
 	def get_open_games(self):
 		result = self.__model__.query.filter(Game.status != 'In Progress').all()
 		response = self.__schema_many__.dump(result)
-		return jsonify(response.data)
+		return response.data
 
 	def create_game(self, request, player):
 		data = {'status' : 'starting'}

@@ -17,6 +17,9 @@ def drop():
 	db.drop_all()
 	return "Dropped	"
 
+def get_result():
+	return "Original"
+
 @app.route("/player/", methods=['GET'])
 @requires_auth
 def get_player():
@@ -34,13 +37,13 @@ def generate_player():
 	player = _player.generate()
 	return jsonify(player)
 
-@app.route("/game", methods=['GET'])
-@requires_auth
+@app.route("/game", methods=['GET'])	
 def get_games():
 	'''
 	Returns a list of all games
 	'''
-	return _game.get_open_games()
+	response = _game.get_open_games()
+	return jsonify(response)
 
 @app.route("/game", methods=['POST'])
 @requires_auth
@@ -55,6 +58,7 @@ def create_game():
 
 @app.route("/game/<int:game_id>", methods=['GET'])
 @requires_auth
+@requires_game_auth
 def get_game(game_id):
 	'''
 	Get information on game
@@ -132,6 +136,11 @@ def play_card(game_id, card_id):
 	except ResponseError as e:
 		return jsonify(e.error)
 
+@app.route("/test_turn", methods=['GET'])
+def test_turn():
+	result = _game.turn.test_turn()
+	return result
+
 def get_movement(value):
 	switcher = {
 		'U': (0,1),
@@ -161,12 +170,15 @@ def end_turn(game_id):
 	The piece will be moves, rotated, and scored
 	(Right now is very long, should probably be broken down)
 	"""
+	# Makes sure change are in the databse
+	# TODO: consider persist object through instead of flushing to db
+	db.session.flush()
+
 	#Get all cards that have potential to move
 	cards = Card.query.filter_by(game_id=game_id).\
 			filter_by(value="P").\
 			filter(Card.board_space_id != None).\
 			all()
-	print cards
 	#Move all the cards
 	for card in cards:
 		x_y = get_movement(card.direction)
@@ -202,6 +214,7 @@ def end_turn(game_id):
 			#Grab any meeples at current space, if they exist add points to score, then remove
 			meeple = Meeple.query.filter_by(game_id=game_id).\
 				filter_by(board_space=new_space).first()
+			
 			if meeple:
 				game = Game.query.filter_by(id=game_id).first()
 				if (game.hosting == meeple.player):

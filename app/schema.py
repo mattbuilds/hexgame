@@ -3,19 +3,19 @@ from .models import Game, Card, BoardSpace, Player, Meeple
 
 def remove_cards(data):
 	#Removes cards that are in the hand or in the deck
-	for card in data.deck[:]:
-		if card.finished:
-			continue
-		if card.board_space is None:
-			data.deck.remove(card)
+	deck = []
+	for card in data.deck:
+		if card.finished or card.board_space:
+			deck.append(card)
 
 	#Removes card spaces that aren't on a board space
-	for space in data.card_movement[:]:
-		if space.board_space is None:
-				data.card_movement.remove(space)
+	card_movement = []
+	for space in data.card_movement:
+		if space.board_space:
+			card_movement.append(space)
 
 	#Creates a new object for cards and meeples on the board
-	data.board_played = {'cards': data.deck, 'meeples':data.meeple, 'card_movement':data.card_movement}
+	data.board_played = {'cards': deck, 'meeples':data.meeple, 'card_movement':card_movement}
 	return data
 
 class PlayerSchema(Schema):
@@ -64,7 +64,7 @@ class GameSchema(Schema):
 			data = remove_cards(data)
 		return data
 
-	#@post_dump(pass_many=True)
+	@post_dump(pass_many=True)
 	def wrap_many(self, data, many):
 		if many:
 			return {'games': data}
@@ -124,4 +124,3 @@ class BoardPlayed(Schema):
 	meeples = fields.Nested(GeneralMeepleSchema, many=True)
 	cards = fields.Nested(GeneralCardSchema, many=True)
 	card_movement = fields.Nested(CardMovementSchema, many=True)
-

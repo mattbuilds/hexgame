@@ -2,8 +2,9 @@ from functools import wraps
 from flask import jsonify, request
 from .models import Player, Game, Meeple, Card
 
-def check_auth(username, password):
-    return Player().check_password(username, password)
+def check_auth(auth):
+	if not auth: return False
+	return Player().check_password(auth.username, auth.password)
 
 def authenticate():
     message = {'message': "Authentication Required"}
@@ -38,8 +39,7 @@ def card_auth():
 def requires_auth(f):
 	@wraps(f)
 	def decorated(*args, **kwargs):
-		auth = request.authorization
-		if not auth or not check_auth(auth.username, auth.password): 
+		if not check_auth(request.authorization): 
 			return authenticate()
 		return f(*args, **kwargs)
 	return decorated
