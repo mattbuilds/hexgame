@@ -20,7 +20,7 @@ class BoardSpaceService(Service):
 		for meeple in meeples:
 			if self.__check_legal(board_space, meeple):
 				card.player=None
-				board_space.card = card
+				card.board_space = board_space 
 				response = self.__schema__.dump(board_space)
 				return response.data
 		raise ResponseError('This is an illegal move.')
@@ -30,7 +30,7 @@ class BoardSpaceService(Service):
 		result = self.get(game_id=id, x_loc=data.x_loc, y_loc=data.y_loc)
 		if not result:
 			raise ResponseError('This is not a space.')
-		if result.meeple or result.card:
+		if result.meeple or result.card.all():
 			raise ResponseError('This space is already occupied.') 
 		return result
 

@@ -8,14 +8,8 @@ def remove_cards(data):
 		if card.finished or card.board_space:
 			deck.append(card)
 
-	#Removes card spaces that aren't on a board space
-	card_movement = []
-	for space in data.card_movement:
-		if space.board_space:
-			card_movement.append(space)
-
 	#Creates a new object for cards and meeples on the board
-	data.board_played = {'cards': deck, 'meeples':data.meeple, 'card_movement':card_movement}
+	data.board_played = {'cards': deck, 'meeples':data.meeple}
 	return data
 
 class PlayerSchema(Schema):
@@ -74,7 +68,7 @@ class GameSchema(Schema):
 class BoardSpaceSchema(Schema):
 	x_loc = fields.Int()
 	y_loc = fields.Int()
-	card = fields.Nested('CardSchema', many=False)
+	card = fields.Nested('GeneralCardSchema', many=True)
 	meeple = fields.Nested('MeepleSchema', many=False, exclude=('board_space',))
 
 	@post_load
@@ -96,7 +90,6 @@ class CardSchema(GeneralCardSchema):
 
 	@post_dump(pass_many=True)
 	def wrap_many(self, data, many):
-		print self
 		if many:
 			return {'cards':data}
 		else:
@@ -104,6 +97,7 @@ class CardSchema(GeneralCardSchema):
 
 class GeneralMeepleSchema(Schema):
 	id = fields.Int()
+	finished = fields.Bool()
 	player = fields.Nested(PlayerSchema, only=["id", "username"])
 	board_space = fields.Nested(BoardSpaceSchema, only=["x_loc", "y_loc"])
 
@@ -115,12 +109,6 @@ class MeepleSchema(GeneralMeepleSchema):
 		else:
 			return data
 
-class CardMovementSchema(Schema):
-	id = fields.Int()
-	card = fields.Nested(CardSchema, only=["id", "color", "finished"])
-	board_space = fields.Nested(BoardSpaceSchema, only=["x_loc", "y_loc"])
-
 class BoardPlayed(Schema):
 	meeples = fields.Nested(GeneralMeepleSchema, many=True)
 	cards = fields.Nested(GeneralCardSchema, many=True)
-	card_movement = fields.Nested(CardMovementSchema, many=True)

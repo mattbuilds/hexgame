@@ -35,12 +35,12 @@ class Game(db.Model):
 	hosting_score = db.Column(db.Integer, default=0)
 	joining_id = db.Column(db.Integer, db.ForeignKey('player.id'))
 	joining_score = db.Column(db.Integer, default=0)
+	move_count = db.Column(db.Integer, default=0)
 	turn_id = db.Column(db.Integer, db.ForeignKey('player.id'))
 	deck = db.relationship("Card", backref='game', lazy='dynamic')
 	board = db.relationship("BoardSpace", backref='game', lazy='dynamic')
 	bot_deck = db.relationship("BotCard", backref='game', lazy='dynamic')
 	meeple = db.relationship("Meeple", backref='game', lazy='dynamic')
-	card_movement = db.relationship("CardMovement", backref='game', lazy='dynamic')
 
 	@classmethod
 	def change(cls, game_id):
@@ -70,8 +70,7 @@ class BoardSpace(db.Model):
 	game_id = db.Column(db.Integer, db.ForeignKey('game.id'))
 	bot_id = db.Column(db.Integer, db.ForeignKey('bot.id'))
 	meeple = db.relationship("Meeple", uselist=False, backref='board_space')
-	card = db.relationship("Card", uselist=False, backref='board_space')
-	movement = db.relationship("CardMovement", backref="board_space")
+	card = db.relationship("Card", backref='board_space', lazy='dynamic')
 
 	@classmethod
 	def get(self,x,y,game):
@@ -88,21 +87,14 @@ class Card(db.Model):
 	points = db.Column(db.Integer)
 	position = db.Column(db.Integer)
 	finished = db.Column(db.Boolean, default=False, nullable=False)
-	movement = db.relationship("CardMovement", backref="card", lazy="dynamic")
 	player_id = db.Column(db.Integer, db.ForeignKey('player.id'))
 	game_id = db.Column(db.Integer, db.ForeignKey('game.id'))
-	board_space_id = db.Column(db.Integer, db.ForeignKey('board_space.id'))
-
-class CardMovement(db.Model):
-	__tablename__ = 'card_movement'
-	id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-	game_id = db.Column(db.Integer, db.ForeignKey('game.id'))
-	card_id = db.Column(db.Integer, db.ForeignKey('card.id'))
 	board_space_id = db.Column(db.Integer, db.ForeignKey('board_space.id'))
 
 class Meeple(db.Model):
 	__tablename__ = 'meeple'
 	id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+	finished = db.Column(db.Boolean, default=False, nullable=False)
 	game_id = db.Column(db.Integer, db.ForeignKey('game.id'))
 	player_id = db.Column(db.Integer, db.ForeignKey('player.id'))
 	board_space_id = db.Column(db.Integer, db.ForeignKey('board_space.id'))

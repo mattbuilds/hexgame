@@ -1,7 +1,7 @@
 import random
 from . import app, db
 from flask import Response, jsonify, request
-from .models import Game, Card, BoardSpace, Player, Meeple, CardMovement
+from .models import Game, Card, BoardSpace, Player, Meeple
 from .services import game as _game, player as _player, boardspace as _boardspace, \
 	meeple as _meeple, card as _card
 from .core import ParseException, ResponseError
@@ -16,9 +16,6 @@ def hello():
 def drop():
 	db.drop_all()
 	return "Dropped	"
-
-def get_result():
-	return "Original"
 
 @app.route("/player/", methods=['GET'])
 @requires_auth
@@ -95,11 +92,7 @@ def get_meeples(game_id):
 @requires_auth
 @requires_turn_auth
 def draw_card(game_id):
-	card = _card.draw(
-		game_id,
-		_player.get(username=request.authorization.username))
-	end_turn(game_id)
-	db.session.commit()
+	card = _game.turn.draw_card(request, game_id)
 	return jsonify(card)
 
 @app.route("/game/<int:game_id>/move/<int:meeple_id>", methods=['POST'])
@@ -107,38 +100,20 @@ def draw_card(game_id):
 @requires_turn_auth 
 @meeple_check
 def move_meeple(game_id, meeple_id):
-	try:
-		result = _boardspace.move_meeple(
-			request, 
-			game_id,
-			_meeple.get(game_id=game_id, id=meeple_id))
-		end_turn(game_id)
-		db.session.commit()
-		return jsonify(result)
-	except ResponseError as e:
-		return jsonify(e.error)
+	result = _game.turn.move_meeple(request, game_id, meeple_id)
+	return jsonify(result)
 
 @app.route("/game/<int:game_id>/hand/<int:card_id>", methods=['POST'])
 @requires_auth
 @requires_turn_auth 
 @card_check
 def play_card(game_id, card_id):
-	try:
-		player = _player.get(username=request.authorization.username)
-		result = _boardspace.play_card(
-			request,
-			game_id,
-			_meeple.all(game_id=game_id, player=player),
-			_card.get(game_id=game_id, id=card_id))
-		end_turn(game_id)
-		db.session.commit()
-		return jsonify(result)
-	except ResponseError as e:
-		return jsonify(e.error)
+	result = _game.turn.play_card(request, game_id, card_id)
+	return jsonify(result)
 
-@app.route("/test_turn", methods=['GET'])
-def test_turn():
-	result = _game.turn.test_turn()
+@app.route("/game/<int:game_id>/spot/<int:x>/<int:y>")
+def get_space(game_id, x, y):
+	result = _boardspace.get_response(game_id=game_id,x_loc=x,y_loc=y)
 	return result
 
 def get_movement(value):
@@ -194,33 +169,22 @@ def end_turn(game_id):
 			previous_space = card.board_space
 			card.board_space = new_space
 
-			#Check if card exists on current space, if no add points
-			previous_card_movement = CardMovement.query.filter_by(board_space=previous_space).\
-				filter_by(card = card).first()
-			previous_card = Card.query.filter_by(board_space=previous_space).\
-				filter(Card.value != "P").first()
-			if not previous_card_movement and not previous_card:
-				card.points = card.points + 1
-				space = CardMovement(game_id = game_id, card = card, board_space=previous_space)
-				db.session.add(space)
-
 			#if current space, rotate
 			current_space = Card.query.filter_by(game_id=game_id).\
 				filter_by(board_space=new_space).filter(Card.value != "P").\
 				filter(Card.id != card.id).first()
 			if current_space:
 				card.direction = current_space.value
+				current_space.board_space = None
+				current_space.finished = True
 
 			#Grab any meeples at current space, if they exist add points to score, then remove
 			meeple = Meeple.query.filter_by(game_id=game_id).\
 				filter_by(board_space=new_space).first()
 			
 			if meeple:
-				game = Game.query.filter_by(id=game_id).first()
-				if (game.hosting == meeple.player):
-					game.hosting_score = card.points + game.hosting_score
-				else:
-					game.joining_score = card.points + game.joining_score
+				meeple.board_space = None
+				meeple.finished = True
 				card.board_space = None
 				card.finished = True
 

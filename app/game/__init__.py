@@ -47,7 +47,6 @@ class GameService(Service):
 	def __create_deck(self, game):
 		card_types = ['UL','U', 'UR', 'DR', 'D', 'DL']
 		deck = []
-		print game
 		for x in xrange(0,36):
 			value = x % 6
 			card = dict(position = x, value=card_types[value], game=game)
@@ -75,29 +74,29 @@ class GameService(Service):
 			db.session.commit() 
 
 	def __create_board(self, game):
-		for x in xrange(-6,7):
-			for y in xrange(-5,6):
-				if abs(y-x) < 6:
+		for x in xrange(-5,6):
+			for y in xrange(-4,5):
+				if abs(y-x) < 5:
 					space = BoardSpace(x_loc = x, y_loc = y, game=game)
 					db.session.add(space)
 
 	def __add_join_to_board(self, game):
-		space1 = BoardSpace.get(-6,-1,game)
-		space2 = BoardSpace.get(0,-5,game)
-		space3 = BoardSpace.get(6,5,game)
+		space1 = BoardSpace.get(-3,1,game)
+		space2 = BoardSpace.get(-4,-2,game)
+		space3 = BoardSpace.get(-3,-4,game)
 		Meeple.add_meeple(game, game.joining, space1)
 		Meeple.add_meeple(game, game.joining, space2)
 		Meeple.add_meeple(game, game.joining, space3)
-		space4 = BoardSpace.get(-6,-5,game)
-		space5 = BoardSpace.get(6,1,game)
-		space6 = BoardSpace.get(0,5,game)
+		space4 = BoardSpace.get(3,-1,game)
+		space5 = BoardSpace.get(4,2,game)
+		space6 = BoardSpace.get(3,4,game)
 		Meeple.add_meeple(game, game.hosting, space4)
 		Meeple.add_meeple(game, game.hosting, space5)
 		Meeple.add_meeple(game, game.hosting, space6)
 
 	def __initial_deal(self, game):
 		deck = game.deck.order_by(Card.position)
-		for x in range(0,6):
+		for x in range(0,14):
 			if x % 2 == 0:
 				deck[x].player = game.hosting
 			else:
