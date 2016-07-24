@@ -7,16 +7,6 @@ from .services import game as _game, player as _player, boardspace as _boardspac
 from .core import ParseException, ResponseError
 from auth import requires_auth, requires_game_auth, requires_turn_auth, meeple_check, card_check
 
-@app.route("/", methods=['GET'])
-def hello():
-	db.create_all()
-	return "Created"
-
-@app.route("/drop", methods=['GET'])
-def drop():
-	db.drop_all()
-	return "Dropped	"
-
 @app.route("/player/", methods=['GET'])
 @requires_auth
 def get_player():
@@ -115,78 +105,3 @@ def play_card(game_id, card_id):
 def get_space(game_id, x, y):
 	result = _boardspace.get_response(game_id=game_id,x_loc=x,y_loc=y)
 	return result
-
-def get_movement(value):
-	switcher = {
-		'U': (0,1),
-		'UR': (1,1),
-		'DR': (1,0),
-		'D':(0,-1),
-		'DL':(-1,-1),
-		'UL':(-1,0)
-	}
-	return switcher.get(value, "nothing")
-
-def get_opposite_direction(value):
-	switcher = {
-		'U': 'D',
-		'UR': 'DL',
-		'DR': 'UL',
-		'D':'U',
-		'DL':'UR',
-		'UL':'DR'
-	}
-	return switcher.get(value, "nothing")
-
-def end_turn(game_id):
-	"""Function that is called at the end of every turn
-
-	The purpose of this function is to handle pieces moving after a completed turn
-	The piece will be moves, rotated, and scored
-	(Right now is very long, should probably be broken down)
-	"""
-	# Makes sure change are in the databse
-	# TODO: consider persist object through instead of flushing to db
-	db.session.flush()
-
-	#Get all cards that have potential to move
-	cards = Card.query.filter_by(game_id=game_id).\
-			filter_by(value="P").\
-			filter(Card.board_space_id != None).\
-			all()
-	#Move all the cards
-	for card in cards:
-		x_y = get_movement(card.direction)
-		new_space = BoardSpace.query.filter_by(game_id=game_id).\
-			filter_by(x_loc = card.board_space.x_loc + x_y[0]).\
-			filter_by(y_loc = card.board_space.y_loc + x_y[1]).\
-			first()
-
-		#if no space, flip in opposite direction
-		if not new_space:
-			card.direction = get_opposite_direction(card.direction)
-		else:
-			previous_space = card.board_space
-			card.board_space = new_space
-
-			#if current space, rotate
-			current_space = Card.query.filter_by(game_id=game_id).\
-				filter_by(board_space=new_space).filter(Card.value != "P").\
-				filter(Card.id != card.id).first()
-			if current_space:
-				card.direction = current_space.value
-				current_space.board_space = None
-				current_space.finished = True
-
-			#Grab any meeples at current space, if they exist add points to score, then remove
-			meeple = Meeple.query.filter_by(game_id=game_id).\
-				filter_by(board_space=new_space).first()
-			
-			if meeple:
-				meeple.board_space = None
-				meeple.finished = True
-				card.board_space = None
-				card.finished = True
-
-	#End Turn 
-	Game.change(game_id)
