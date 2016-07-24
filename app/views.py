@@ -82,8 +82,8 @@ def get_meeples(game_id):
 @requires_auth
 @requires_turn_auth
 def draw_card(game_id):
-	card = _game.turn.draw_card(request, game_id)
-	return jsonify(card)
+	result = _game.turn.draw_card(request, game_id)
+	return _game.get_response(id=game_id)
 
 @app.route("/game/<int:game_id>/move/<int:meeple_id>", methods=['POST'])
 @requires_auth
