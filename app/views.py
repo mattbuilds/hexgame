@@ -91,7 +91,7 @@ def draw_card(game_id):
 @meeple_check
 def move_meeple(game_id, meeple_id):
 	result = _game.turn.move_meeple(request, game_id, meeple_id)
-	return jsonify(result)
+	return _game.get_response(id=game_id)
 
 @app.route("/game/<int:game_id>/hand/<int:card_id>", methods=['POST'])
 @requires_auth
@@ -99,7 +99,7 @@ def move_meeple(game_id, meeple_id):
 @card_check
 def play_card(game_id, card_id):
 	result = _game.turn.play_card(request, game_id, card_id)
-	return jsonify(result)
+	return _game.get_response(id=game_id)
 
 @app.route("/game/<int:game_id>/spot/<int:x>/<int:y>")
 def get_space(game_id, x, y):
