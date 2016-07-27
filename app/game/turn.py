@@ -37,7 +37,7 @@ class Turn():
 				return 'Done'
 			self.__check_move(game_id)
 			db.session.commit()
-			return result
+			return board_space
 		except ResponseError as e:
 			return e.error
 
