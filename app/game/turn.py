@@ -6,7 +6,6 @@ from app.models import Game, Card, BoardSpace, Meeple
 from .. import db
 from ..core import ResponseError
 
-_game = GameService()
 _card = CardService()
 _player = PlayerService()
 _boardspace = BoardSpaceService()
@@ -32,7 +31,7 @@ class Turn():
 				game_id,
 				_meeple.get(game_id=game_id, id=meeple_id))
 			if board_space.end_space_id:
-				game = _game.get(id=game_id)
+				game = Game.query.filter_by(id=game_id).first()
 				game.status = 'Done'
 				db.session.commit()
 				return 'Done'
