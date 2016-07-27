@@ -48,16 +48,16 @@ class GameService(Service):
 	def __create_deck(self, game):
 		card_types = ['UL','U', 'UR', 'DR', 'D', 'DL']
 		deck = []
-		for x in xrange(0,36):
+		for x in xrange(0,72):
 			value = x % 6
 			card = dict(position = x, value=card_types[value], game=game)
 			result = Card(**card)
 			db.session.add(result)
 
 		color = ['']
-		for x in xrange(0,6):
+		for x in xrange(0,12):
 			direction = x % 6
-			card = dict(position = 36+ x, value = 'P', direction = card_types[direction],
+			card = dict(position = 72+ x, value = 'P', direction = card_types[direction],
 						game=game, color=x, points=0)
 			result = Card(**card)
 			db.session.add(result)
@@ -66,8 +66,8 @@ class GameService(Service):
 
 		# Kind of hacky, can be made better by calling all the cards in a game at once,
 		# update in objects, then commit to the database
-		for x in range(0,42):
-			switch = random.randint(0,41)
+		for x in range(0,84):
+			switch = random.randint(0,83)
 			card1 = Card.query.filter_by(position=x).filter_by(game=game).first()
 			card2 = Card.query.filter_by(position=switch).filter_by(game=game).first()
 			card1.position = switch
