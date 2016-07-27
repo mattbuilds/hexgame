@@ -7,6 +7,16 @@ from .services import game as _game, player as _player, boardspace as _boardspac
 from .core import ParseException, ResponseError
 from auth import requires_auth, requires_game_auth, requires_turn_auth, meeple_check, card_check
 
+@app.route("/", methods=['GET'])
+def hello():
+	db.create_all()
+	return "Created"
+
+@app.route("/drop", methods=['GET'])
+def drop():
+	db.drop_all()
+	return "Dropped	"
+
 @app.route("/player/", methods=['GET'])
 @requires_auth
 def get_player():

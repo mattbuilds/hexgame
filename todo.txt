@@ -1,4 +1,9 @@
 TODO
 
-- write a function to do all the checks for meeples and cards
-- write boardspace to meeple function to make sure move is allowed
++ only check config/game state when it is not your turn
+- create a standard handle response after sending a move
+- add animations to the update section(or write coroutine)
+- design new yet simple 2D color pattern
+- add end of game to backend and a message when the game is over
+- fix getting initial players/add code to config
+- readd used cards to deck

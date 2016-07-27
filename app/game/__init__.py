@@ -41,6 +41,7 @@ class GameService(Service):
 		game.turn = game.hosting
 		self.__add_join_to_board(game)
 		self.__initial_deal(game)
+		self.__add_end_spaces(game)
 		db.session.commit()
 		return 'Join %d' % game.id
 
@@ -93,6 +94,24 @@ class GameService(Service):
 		Meeple.add_meeple(game, game.hosting, space4)
 		Meeple.add_meeple(game, game.hosting, space5)
 		Meeple.add_meeple(game, game.hosting, space6)
+
+	def __add_end_spaces(self, game):
+		space1 = BoardSpace.get(5,1,game)
+		space2 = BoardSpace.get(5,2,game)
+		space3 = BoardSpace.get(5,3,game)
+		space4 = BoardSpace.get(5,4,game)
+		space1.player = game.joining
+		space2.player = game.joining
+		space3.player = game.joining
+		space4.player = game.joining
+		space5 = BoardSpace.get(-5,-1,game)
+		space6 = BoardSpace.get(-5,-2,game)
+		space7 = BoardSpace.get(-5,-3,game)
+		space8 = BoardSpace.get(-5,-4,game)
+		space5.player = game.hosting
+		space6.player = game.hosting
+		space7.player = game.hosting
+		space8.player = game.hosting
 
 	def __initial_deal(self, game):
 		deck = game.deck.order_by(Card.position)

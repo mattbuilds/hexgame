@@ -13,6 +13,7 @@ class Player(db.Model):
 	turn = db.relationship("Game", backref='turn', lazy='dynamic', foreign_keys='Game.turn_id')
 	card = db.relationship("Card", backref='player', lazy='dynamic')
 	meeple = db.relationship("Meeple", backref='player', lazy='dynamic')
+	end_space = db.relationship("BoardSpace", backref='player', lazy='dynamic')
 
 	def new_player(self):
 		try:
@@ -71,6 +72,7 @@ class BoardSpace(db.Model):
 	bot_id = db.Column(db.Integer, db.ForeignKey('bot.id'))
 	meeple = db.relationship("Meeple", uselist=False, backref='board_space')
 	card = db.relationship("Card", backref='board_space', lazy='dynamic')
+	end_space_id = db.Column(db.Integer, db.ForeignKey('player.id'))
 
 	@classmethod
 	def get(self,x,y,game):

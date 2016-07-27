@@ -6,6 +6,7 @@ from app.models import Game, Card, BoardSpace, Meeple
 from .. import db
 from ..core import ResponseError
 
+_game = GameService()
 _card = CardService()
 _player = PlayerService()
 _boardspace = BoardSpaceService()
@@ -25,10 +26,16 @@ class Turn():
 
 	def move_meeple(self, request, game_id, meeple_id):
 		try:
-			result = _boardspace.move_meeple(
+			player = _player.get(username=request.authorization.username)
+			board_space = _boardspace.move_meeple(
 				request, 
 				game_id,
 				_meeple.get(game_id=game_id, id=meeple_id))
+			if board_space.end_space_id:
+				game = _game.get(id=game_id)
+				game.status = 'Done'
+				db.session.commit()
+				return 'Done'
 			self.__check_move(game_id)
 			db.session.commit()
 			return result

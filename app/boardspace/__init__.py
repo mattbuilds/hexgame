@@ -11,7 +11,7 @@ class BoardSpaceService(Service):
 		if self.__check_legal(board_space, meeple):
 			board_space.meeple = meeple
 			response = self.__schema__.dump(board_space)
-			return response.data
+			return board_space
 		else:
 			raise ResponseError('This is an illegal move.')
 
