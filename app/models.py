@@ -14,6 +14,7 @@ class Player(db.Model):
 	card = db.relationship("Card", backref='player', lazy='dynamic')
 	meeple = db.relationship("Meeple", backref='player', lazy='dynamic')
 	end_space = db.relationship("BoardSpace", backref='player', lazy='dynamic')
+	winner = db.relationship("Game", backref='winner', lazy='dynamic', foreign_keys='Game.winner_id')
 
 	def new_player(self):
 		try:
@@ -42,6 +43,7 @@ class Game(db.Model):
 	board = db.relationship("BoardSpace", backref='game', lazy='dynamic')
 	bot_deck = db.relationship("BotCard", backref='game', lazy='dynamic')
 	meeple = db.relationship("Meeple", backref='game', lazy='dynamic')
+	winner_id = db.Column(db.Integer, db.ForeignKey('player.id'))
 
 	@classmethod
 	def change(cls, game_id):

@@ -33,6 +33,7 @@ class Turn():
 			if board_space.end_space_id:
 				game = Game.query.filter_by(id=game_id).first()
 				game.status = 'Done'
+				game.winner = player
 				db.session.commit()
 				return 'Done'
 			self.__check_move(game_id)
