@@ -40,6 +40,7 @@ class GameSchema(Schema):
 	status = fields.Str()
 	hosting = fields.Nested(PlayerSchema, only=["id", "username", "score"])
 	joining = fields.Nested(PlayerSchema, only=["id", "username", "score"])
+	winner = fields.Nested(PlayerSchema, only=["id", "username"])
 	turn = fields.Nested(PlayerSchema, only=["id", "username"])
 	board_played = fields.Nested('BoardPlayed')
 
