@@ -14,7 +14,7 @@ class GameService(Service):
 	turn = Turn()
 
 	def get_open_games(self):
-		result = self.__model__.query.filter(Game.status != 'In Progress').all()
+		result = self.__model__.query.filter(Game.status == 'starting').all()
 		response = self.__schema_many__.dump(result)
 		return response.data
 
@@ -58,7 +58,7 @@ class GameService(Service):
 		for x in xrange(0,12):
 			direction = x % 6
 			card = dict(position = 72+ x, value = 'P', direction = card_types[direction],
-						game=game, color=x, points=0)
+						game=game, color=direction, points=0)
 			result = Card(**card)
 			db.session.add(result)
 
