@@ -30,7 +30,7 @@ class Turn():
 				request, 
 				game_id,
 				_meeple.get(game_id=game_id, id=meeple_id))
-			if board_space.end_space_id:
+			if board_space.end_space_id == player.id:
 				game = Game.query.filter_by(id=game_id).first()
 				game.status = 'Done'
 				game.winner = player

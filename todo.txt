@@ -1,9 +1,8 @@
 TODO
 
-+ only check config/game state when it is not your turn
-- create a standard handle response after sending a move
++ update color scheme for players
+- possible update triangles
++ write up rules and objective
 - add animations to the update section(or write coroutine)
-- design new yet simple 2D color pattern
-- add end of game to backend and a message when the game is over
+- after animations done, add ability to playback the last turn
 - fix getting initial players/add code to config
-- readd used cards to deck

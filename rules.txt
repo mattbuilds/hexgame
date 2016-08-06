@@ -1,0 +1,13 @@
+Summary
+Hexboard is a game where the objective is to get one of your pieces to the side of the board. The first player to get one of their pieces to the other side of the board wins the game.
+
+SetUp
+The starting board looks like the following [img of starting board]. Each player starts with 7 cards.
+
+Turn
+Each turn a player can a player has 2 actions. An action consists of one of three different options; (1) Draw a card from the deck, (2) Move one of your pieces, (3) Play one of your cards on the board. A card can only be played adjacent to one of your pieces.
+
+Cards
+The deck is made of 84 cards (72 directional arrow cards and 12 triangle cards). These different type of cards serve the following purpose:
+	The first type of card is a triangle cards, and it is used as an attack card. If it crashes into another piece that piece is removed from the board. The triangle card will move one space at the end of each players turn in whatever direction the triangle is facing. If a triangle card reaches the end of the board it will reverse its direction. 
+	The second type of card is an arrow card and it is the only other way to change the direction of a triangle card. If a triangle card runs into an arrow card, the direction of the triangle card will allign with the direction of the arrow card. After this happens the arrow card will be removed from the board. In addition to changing the direction of a triangle card, the arrow card has two other purposes. The first is to prevent a player from from moving to a space. A player cannot move to a space that is occupied by an arrow card. The other is to prevent a player from laying down a card on that space. A card cannot be placed on an already occupied space.
